@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoltNav - EV Charging Station Tracker & Slot Availability</title>
+  <meta name="description" content="Intelligent EV Charging Station Tracker with real-time slot availability, interactive visualizations, and smart filtering across 1,100+ stations in India.">
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%2300ff87'><path d='M11 20V13H7L13 4V11H17L11 20Z'/></svg>">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet CSS for Map -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Custom Modern Styles -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="light-theme">
+  <!-- Dynamic Particle Canvas Background -->
+  <canvas id="ambient-canvas"></canvas>
+
+  <!-- Navbar -->
+  <header class="navbar-wrapper">
+    <nav class="navbar glass-panel">
+      <div class="nav-brand">
+        <div class="logo-icon-3d">
+          <div class="bolt-glow"></div>
+          <i data-lucide="zap"></i>
+        </div>
+        <div class="brand-text">
+          <span class="brand-title">VOLT<span class="text-gradient">NAV</span></span>
+          <span class="brand-badge">EV TRACKER</span>
+        </div>
+      </div>
+
+      <div class="nav-links">
+        <a href="#dashboard" class="nav-link active" data-nav="dashboard">
+          <i data-lucide="layout-dashboard"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="#stations" class="nav-link" data-nav="stations">
+          <i data-lucide="search"></i>
+          <span>Find Stations</span>
+        </a>
+        <a href="#map-view" class="nav-link" data-nav="map-view">
+          <i data-lucide="map-pin"></i>
+          <span>Google Map</span>
+        </a>
+        <a href="#availability" class="nav-link" data-nav="availability">
+          <i data-lucide="activity"></i>
+          <span>Slot Matrix</span>
+        </a>
+        <a href="#about" class="nav-link" data-nav="about">
+          <i data-lucide="database"></i>
+          <span>Dataset & API</span>
+        </a>
+      </div>
+
+      <div class="nav-actions">
+        <button id="geo-btn" class="btn btn-glass" title="Detect your location for nearby stations">
+          <i data-lucide="locate-fixed"></i>
+          <span class="btn-text">Near Me</span>
+        </button>
+        <div class="live-pill" title="Live Slot Simulator Engine Connected">
+          <span class="pulsing-dot"></span>
+          <span class="pill-text">LIVE SYNC</span>
+        </div>
+      </div>
+
+      <!-- Mobile menu toggle -->
+      <button class="mobile-toggle" id="mobile-toggle" aria-label="Toggle navigation">
+        <i data-lucide="menu"></i>
+      </button>
+    </nav>
+  </header>
+
+  <!-- Main Container -->
+  <main class="main-content">
+    
+    <!-- Hero Section with Interactive Animation -->
+    <section id="dashboard" class="hero-section">
+      <div class="hero-grid">
+        <div class="hero-content">
+          <div class="hero-pill glass-card">
+            <i data-lucide="shield-check" class="text-emerald"></i>
+            <span>Verified Kaggle Dataset &bull; 1,194 Active Hubs Across India</span>
+          </div>
+
+          <h1 class="hero-title">
+            Smart EV Charging <br>
+            <span class="text-gradient">Tracker & Slot Availability</span>
+          </h1>
+
+          <p class="hero-description">
+            Locate high-speed DC fast chargers, check live slot occupancy, compare power ratings, 
+            and navigate directly to 1,194 charging stations powered by verified dataset telemetry.
+          </p>
+
+          <div class="hero-search glass-panel">
+            <i data-lucide="search" class="search-icon"></i>
+            <input type="text" id="hero-quick-search" placeholder="Search by city (e.g. Bengaluru, Gurugram, Pune, Mumbai)..." autocomplete="off">
+            <button class="btn btn-primary" id="hero-search-btn">
+              <span>Find Stations</span>
+              <i data-lucide="arrow-right"></i>
+            </button>
+            <a href="#map-view" class="btn btn-glass" id="hero-map-jump-btn" title="Open Interactive Google Map">
+              <i data-lucide="map-pin" class="text-emerald"></i>
+              <span>Google Map</span>
+            </a>
+          </div>
+
+          <div class="quick-tags">
+            <span class="tag-label">Popular Cities:</span>
+            <button class="quick-chip" data-city="Bengaluru">Bengaluru</button>
+            <button class="quick-chip" data-city="Gurugram">Gurugram</button>
+            <button class="quick-chip" data-city="New Delhi">New Delhi</button>
+            <button class="quick-chip" data-city="Pune">Pune</button>
+            <button class="quick-chip" data-city="Mumbai">Mumbai</button>
+            <button class="quick-chip" data-city="Chennai">Chennai</button>
+          </div>
+        </div>
+
+        <!-- Interactive Floating Dashboard Widget -->
+        <div class="hero-3d-visual">
+          <div class="charger-3d-card glass-panel" id="hero-tilt-card">
+            <div class="card-glow-layer"></div>
+            
+            <!-- Viewport Controls & Image Switcher -->
+            <div class="hero-3d-banner-container">
+              <div class="hero-3d-media-view" id="hero-media-view">
+                <img id="hero-featured-img" src="images/hero-3d-station.jpg" alt="EV Superstation" class="hero-featured-image">
+                <canvas id="threejs-hero-canvas" class="threejs-canvas" style="display:none;"></canvas>
+                <div class="hero-media-overlay">
+                  <div class="media-badge">
+                    <span class="pulse-dot"></span>
+                    <span id="hero-media-caption">Superstation Hub</span>
+                  </div>
+                  <div class="media-mode-toggle">
+                    <button class="mode-btn active" id="btn-show-photo" title="Photo View">
+                      <i data-lucide="image"></i> Photo
+                    </button>
+                    <button class="mode-btn" id="btn-show-3d" title="Interactive Model">
+                      <i data-lucide="box"></i> Model
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Photo Thumbnails Strip -->
+              <div class="hero-thumb-strip">
+                <div class="thumb-item active" data-img="images/hero-3d-station.jpg" data-caption="Superstation Hub" title="Solar Canopy Superstation">
+                  <img src="images/hero-3d-station.jpg" alt="Superstation">
+                </div>
+                <div class="thumb-item" data-img="images/hero-3d-kiosk.jpg" data-caption="Ultra-Fast 100kW Kiosk" title="Fast Charging Kiosk">
+                  <img src="images/hero-3d-kiosk.jpg" alt="Fast Kiosk">
+                </div>
+                <div class="thumb-item" data-img="images/hero-3d-plaza.jpg" data-caption="Highway Charging Plaza" title="Charging Plaza">
+                  <img src="images/hero-3d-plaza.jpg" alt="Charging Plaza">
+                </div>
+                <div class="thumb-item" data-img="images/hero-3d-scooter.jpg" data-caption="Smart 2-Wheeler Pod" title="Urban Scooter Pod">
+                  <img src="images/hero-3d-scooter.jpg" alt="Urban Pod">
+                </div>
+                <div class="thumb-item" data-img="images/hero-3d-mall.jpg" data-caption="Underground Green Zone" title="Mall EV Hub">
+                  <img src="images/hero-3d-mall.jpg" alt="Mall EV Hub">
+                </div>
+              </div>
+            </div>
+
+            <div class="charger-card-header">
+              <div class="station-avatar">
+                <i data-lucide="battery-charging"></i>
+              </div>
+              <div class="station-meta">
+                <div class="station-badge">FAST DC HUB</div>
+                <h3>Statiq &bull; CyberHub Superstation</h3>
+                <p>Gurugram, Haryana &bull; 60 kW CCS-2</p>
+              </div>
+              <span class="status-badge available">
+                <span class="dot"></span> Available
+              </span>
+            </div>
+
+            <!-- Holographic Power Gauge -->
+            <div class="power-gauge-wrapper">
+              <div class="circular-progress" data-percent="75">
+                <svg viewBox="0 0 100 100">
+                  <circle class="bg-circle" cx="50" cy="50" r="42"></circle>
+                  <circle class="progress-circle" cx="50" cy="50" r="42" style="stroke-dashoffset: 65.9;"></circle>
+                </svg>
+                <div class="gauge-center">
+                  <span class="gauge-val">60</span>
+                  <span class="gauge-unit">kW DC</span>
+                </div>
+              </div>
+
+              <div class="gauge-details">
+                <div class="stat-mini">
+                  <span class="label">Voltage Range</span>
+                  <span class="val text-cyan">400V - 800V DC</span>
+                </div>
+                <div class="stat-mini">
+                  <span class="label">Tariff Estimate</span>
+                  <span class="val text-emerald">₹18 - ₹22 / kWh</span>
+                </div>
+                <div class="stat-mini">
+                  <span class="label">Operating Hours</span>
+                  <span class="val">24/7 Always Open</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Mini Slot Visualizer -->
+            <div class="mini-slots-card">
+              <div class="mini-slots-header">
+                <span>Real-Time Slot Matrix</span>
+                <span class="text-emerald text-sm">3 / 4 Slots Free</span>
+              </div>
+              <div class="slots-pill-group">
+                <div class="slot-pill-mini available" title="Slot 1: Available (CCS-2)">
+                  <span class="pulse-ring"></span>
+                  <i data-lucide="check"></i>
+                  <span>Slot 1</span>
+                </div>
+                <div class="slot-pill-mini available" title="Slot 2: Available (CCS-2)">
+                  <span class="pulse-ring"></span>
+                  <i data-lucide="check"></i>
+                  <span>Slot 2</span>
+                </div>
+                <div class="slot-pill-mini occupied" title="Slot 3: In Use (Tesla/Tata Ev)">
+                  <i data-lucide="clock"></i>
+                  <span>Slot 3</span>
+                </div>
+                <div class="slot-pill-mini available" title="Slot 4: Available (CHAdeMO)">
+                  <span class="pulse-ring"></span>
+                  <i data-lucide="check"></i>
+                  <span>Slot 4</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card-footer-3d">
+              <span class="latency-indicator"><i data-lucide="wifi"></i> Live Telemetry: 12ms</span>
+              <button class="btn btn-sm btn-outline" id="demo-modal-btn">Explore Details</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Animated Key Metric Counters -->
+      <div class="stats-row">
+        <div class="stat-card glass-panel 3d-card" data-tilt>
+          <div class="stat-icon-wrapper cyan">
+            <i data-lucide="map-pinned"></i>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value" id="stat-total-stations">1,194</div>
+            <div class="stat-label">Total Verified Stations</div>
+            <div class="stat-sub">Across 290 Indian Cities</div>
+          </div>
+        </div>
+
+        <div class="stat-card glass-panel 3d-card" data-tilt>
+          <div class="stat-icon-wrapper emerald">
+            <i data-lucide="check-circle-2"></i>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value text-emerald" id="stat-available-slots">2,499</div>
+            <div class="stat-label">Available Charging Slots</div>
+            <div class="stat-sub">Ready For Immediate Plug-In</div>
+          </div>
+        </div>
+
+        <div class="stat-card glass-panel 3d-card" data-tilt>
+          <div class="stat-icon-wrapper amber">
+            <i data-lucide="zap"></i>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value" id="stat-total-slots">4,166</div>
+            <div class="stat-label">Total Charging Ports</div>
+            <div class="stat-sub">CCS-2, Type-2 & CHAdeMO</div>
+          </div>
+        </div>
+
+        <div class="stat-card glass-panel 3d-card" data-tilt>
+          <div class="stat-icon-wrapper purple">
+            <i data-lucide="gauge"></i>
+          </div>
+          <div class="stat-content">
+            <div class="stat-value" id="stat-utilization">34.3%</div>
+            <div class="stat-label">Network Utilization</div>
+            <div class="stat-sub">Live Dynamic Load</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Search & Find Stations Section -->
+    <section id="stations" class="section-container">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">
+            <i data-lucide="compass" class="text-cyan"></i>
+            Find & Filter Charging Stations
+          </h2>
+          <p class="section-subtitle">Search real Kaggle dataset stations with high-speed filters for power, connector type, and slot availability.</p>
+        </div>
+        <div class="view-toggles">
+          <button class="view-toggle-btn active" id="btn-view-cards" title="Card View">
+            <i data-lucide="grid"></i>
+          </button>
+          <button class="view-toggle-btn" id="btn-view-table" title="Table View">
+            <i data-lucide="list"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Filter Control Console -->
+      <div class="filter-console glass-panel">
+        <div class="filter-row-primary">
+          <div class="search-input-box">
+            <i data-lucide="search"></i>
+            <input type="text" id="filter-search" placeholder="Search by name, address, landmark, highway...">
+            <button class="clear-btn" id="clear-search" style="display:none;"><i data-lucide="x"></i></button>
+          </div>
+
+          <div class="filter-select-box">
+            <i data-lucide="map-pin"></i>
+            <select id="filter-city">
+              <option value="all">All Cities (290+)</option>
+            </select>
+          </div>
+
+          <div class="filter-select-box">
+            <i data-lucide="flag"></i>
+            <select id="filter-state">
+              <option value="all">All States / UTs (38)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="filter-row-secondary">
+          <div class="filter-chip-group">
+            <label class="filter-label">Charger Type:</label>
+            <button class="filter-chip active" data-type="all">All</button>
+            <button class="filter-chip" data-type="dc">DC Fast (50-60 kW)</button>
+            <button class="filter-chip" data-type="dual">Dual AC/DC</button>
+            <button class="filter-chip" data-type="ac">AC Type 2</button>
+          </div>
+
+          <div class="filter-chip-group">
+            <label class="filter-label">Slot Status:</label>
+            <button class="status-chip active" data-status="all">Any Status</button>
+            <button class="status-chip" data-status="available">🟢 Available Only</button>
+            <button class="status-chip" data-status="occupied">🟠 High Demand</button>
+          </div>
+
+          <div class="filter-dropdown-right">
+            <label class="filter-label">Sort By:</label>
+            <select id="filter-sort">
+              <option value="default">Default Order</option>
+              <option value="available_slots">Most Free Slots</option>
+              <option value="power">Highest Power (kW)</option>
+              <option value="name">Station Name (A-Z)</option>
+              <option value="distance" id="sort-distance-opt" disabled>Nearest Distance (Enable GPS)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Results Meta Bar -->
+      <div class="results-meta-bar">
+        <div class="results-count">
+          Showing <span id="displayed-count" class="text-cyan font-bold">18</span> of <span id="total-count" class="font-bold">1,194</span> verified stations
+        </div>
+        <div class="active-filter-tags" id="active-filter-tags"></div>
+      </div>
+
+      <!-- Station Cards Grid -->
+      <div class="station-cards-grid" id="station-cards-container">
+        <!-- Rendered dynamically by app.js -->
+        <div class="loading-spinner">
+          <div class="spinner"></div>
+          <p>Loading EV stations from verified Kaggle dataset...</p>
+        </div>
+      </div>
+
+      <!-- Table View (Hidden by default) -->
+      <div class="station-table-container glass-panel" id="station-table-container" style="display:none;">
+        <table class="station-table">
+          <thead>
+            <tr>
+              <th>Station Name</th>
+              <th>Location</th>
+              <th>Charger Type</th>
+              <th>Power (kW)</th>
+              <th>Total Ports</th>
+              <th>Availability</th>
+              <th>Operating Hours</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="station-table-body">
+            <!-- Rendered by app.js -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-bar" id="pagination-bar">
+        <button class="btn btn-glass" id="prev-page-btn" disabled>
+          <i data-lucide="chevron-left"></i> Previous
+        </button>
+        <div class="page-numbers" id="page-numbers"></div>
+        <button class="btn btn-glass" id="next-page-btn">
+          Next <i data-lucide="chevron-right"></i>
+        </button>
+      </div>
+    </section>
+
+    <!-- Interactive Google Map Section -->
+    <section id="map-view" class="section-container">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">
+            <i data-lucide="map" class="text-emerald"></i>
+            Interactive Google Map &bull; EV Station Tracker
+          </h2>
+          <p class="section-subtitle">Real Google Maps streets, satellite imagery, and GPS coordinates from your Kaggle dataset. Toggle between Google Streets &amp; Satellite, click any marker, or search on the map.</p>
+        </div>
+      </div>
+
+      <div class="map-layout">
+        <div class="map-wrapper glass-panel">
+          <div id="leaflet-map"></div>
+          <div class="map-legend glass-panel">
+            <div class="legend-item"><span class="legend-dot green"></span> Available Slots</div>
+            <div class="legend-item"><span class="legend-dot orange"></span> Fully Occupied</div>
+            <div class="legend-item"><span class="legend-dot red"></span> Maintenance</div>
+          </div>
+        </div>
+
+        <!-- Map Selected Station Quick-Dock -->
+        <div class="map-quick-panel glass-panel" id="map-station-preview">
+          <div class="preview-placeholder">
+            <i data-lucide="mouse-pointer-click"></i>
+            <h4>Select Any Station On Map</h4>
+            <p>Click any map pin to view full live slots, power capacity, tariffs, and directions.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Slot Availability Hub & Live Matrix -->
+    <section id="availability" class="section-container">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">
+            <i data-lucide="activity" class="text-cyan"></i>
+            Real-Time Slot Availability Matrix
+          </h2>
+          <p class="section-subtitle">Clearly distinguishing verified dataset records from real-time live slot simulation.</p>
+        </div>
+      </div>
+
+      <div class="availability-explanation-banner glass-panel">
+        <div class="banner-badge">
+          <i data-lucide="info"></i>
+          <span>Architecture Notice</span>
+        </div>
+        <div class="banner-text">
+          <strong>Kaggle Dataset Ground Truth vs. Real-Time Tracking:</strong>
+          The station locations, operators, coordinates, and charging hardware capacity are directly derived from the Kaggle dataset.
+          Because static datasets do not contain live second-by-second vehicle plug-in events, VoltNav pairs the dataset with an 
+          active dynamic slot simulation engine. You can reserve slots below to see instantaneous state transitions!
+        </div>
+      </div>
+
+      <!-- Real-Time Slot Monitor Showcase -->
+      <div class="slot-monitor-container glass-panel" id="slot-monitor-panel">
+        <div class="monitor-header">
+          <div class="station-select-wrapper">
+            <label>Monitor Station:</label>
+            <select id="monitor-station-select">
+              <option value="">Select a charging station to monitor...</option>
+            </select>
+          </div>
+          <div class="live-pulse-badge">
+            <span class="pulsing-dot"></span>
+            <span>Live Telemetry Active</span>
+          </div>
+        </div>
+
+        <div class="slot-monitor-content" id="slot-monitor-content">
+          <div class="empty-monitor-state">
+            <i data-lucide="gauge" class="empty-icon"></i>
+            <h3>Choose a Charging Station Above</h3>
+            <p>Inspect individual charging guns, check real-time voltage and connector types, or simulate a reservation.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- About & Dataset Pipeline Section -->
+    <section id="about" class="section-container">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">
+            <i data-lucide="cpu" class="text-purple"></i>
+            Dataset Architecture & Pipeline
+          </h2>
+          <p class="section-subtitle">How Kaggle dataset data transforms into an intelligent full-stack EV application.</p>
+        </div>
+      </div>
+
+      <div class="architecture-grid">
+        <div class="pipeline-step-card glass-panel 3d-card" data-tilt>
+          <div class="step-num">01</div>
+          <div class="step-icon"><i data-lucide="file-spreadsheet"></i></div>
+          <h3>Kaggle Raw Dataset</h3>
+          <p>Indian EV charging station dataset imported into Google Colab containing raw station names, coordinates, and network categories.</p>
+          <div class="pipeline-tag">1,547 Raw Records</div>
+        </div>
+
+        <div class="pipeline-step-card glass-panel 3d-card" data-tilt>
+          <div class="step-num">02</div>
+          <div class="step-icon"><i data-lucide="code-2"></i></div>
+          <h3>Colab Cleaning Pipeline</h3>
+          <p>Standardizes coordinates, fixes inverted GPS points, cleans city/state names, parses operator brands, and generates slot topologies.</p>
+          <div class="pipeline-tag">Pandas + Zero Duplicates</div>
+        </div>
+
+        <div class="pipeline-step-card glass-panel 3d-card" data-tilt>
+          <div class="step-num">03</div>
+          <div class="step-icon"><i data-lucide="server"></i></div>
+          <h3>Backend REST API</h3>
+          <p>Lightweight high-performance Python engine serving search, Haversine proximity calculations, dynamic simulation, and JSON endpoints.</p>
+          <div class="pipeline-tag">Fast REST API &bull; Port 5000</div>
+        </div>
+
+        <div class="pipeline-step-card glass-panel 3d-card" data-tilt>
+          <div class="step-num">04</div>
+          <div class="step-icon"><i data-lucide="sparkles"></i></div>
+          <h3>Interactive Modern Frontend</h3>
+          <p>Leaflet.js interactive maps, card tilt physics, animated radial progress gauges, glassmorphic modals, and responsive mobile UI.</p>
+          <div class="pipeline-tag">HTML5 / Modern CSS / JS</div>
+        </div>
+      </div>
+
+      <!-- Dataset Column Mapping Table -->
+      <div class="column-mapping-wrapper glass-panel">
+        <h3 class="mapping-title">
+          <i data-lucide="table"></i>
+          Dataset Column Inspection & Application Usage
+        </h3>
+        <div class="table-responsive">
+          <table class="mapping-table">
+            <thead>
+              <tr>
+                <th>Dataset Column</th>
+                <th>Raw Kaggle Type</th>
+                <th>Data Cleaning & Transformation</th>
+                <th>Application Usage in VoltNav</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code>name</code></td>
+                <td>String</td>
+                <td>Stripped quotes, extracted operator brands (Tata, Statiq, Ather, IOCL).</td>
+                <td>Primary station title, operator badge, brand search filter.</td>
+              </tr>
+              <tr>
+                <td><code>state</code></td>
+                <td>String</td>
+                <td>Standardized typos (e.g. <code>TamiNadu</code> &rarr; <code>Tamil Nadu</code>, <code>Harayana</code> &rarr; <code>Haryana</code>).</td>
+                <td>State dropdown filter, regional grouping, location hierarchy.</td>
+              </tr>
+              <tr>
+                <td><code>city</code></td>
+                <td>String</td>
+                <td>Title-cased (e.g. <code>bengaluru</code> &rarr; <code>Bengaluru</code>, <code>gurgaon</code> &rarr; <code>Gurugram</code>).</td>
+                <td>City search filter, quick city chips, location card badge.</td>
+              </tr>
+              <tr>
+                <td><code>address</code></td>
+                <td>String</td>
+                <td>Filled missing addresses with formatted city/state fallback.</td>
+                <td>Address display on station cards, modal details, Google Maps directions.</td>
+              </tr>
+              <tr>
+                <td><code>lattitude</code></td>
+                <td>Float</td>
+                <td>Fixed dataset typo name, corrected inverted lat/lon coordinates.</td>
+                <td>Leaflet map pins, GPS "Near Me" Haversine distance ranking.</td>
+              </tr>
+              <tr>
+                <td><code>longitude</code></td>
+                <td>Float</td>
+                <td>Validated geographic boundary inside India (68&deg;E to 98&deg;E).</td>
+                <td>Interactive map placement, navigation routing.</td>
+              </tr>
+              <tr>
+                <td><code>type</code></td>
+                <td>Integer (6, 7, 12)</td>
+                <td>Mapped network codes into charger specs (DC Fast, Dual AC/DC, AC Type 2).</td>
+                <td>Power rating (kW), voltage, speed tier, connector types (CCS-2, CHAdeMO).</td>
+              </tr>
+              <tr>
+                <td><code>slots</code> (Enriched)</td>
+                <td>Object Array</td>
+                <td>Derived 2-4 ports based on station class + live simulation states.</td>
+                <td>🟢 Available / 🟠 Occupied slot visualizer, interactive reservation modal.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Station Details Modal Window -->
+  <div class="modal-backdrop" id="station-modal-backdrop">
+    <div class="modal-3d-window glass-panel" id="station-modal">
+      <button class="modal-close-btn" id="modal-close-btn" aria-label="Close modal">
+        <i data-lucide="x"></i>
+      </button>
+
+      <!-- Photo Banner Header -->
+      <div class="modal-photo-banner-wrapper">
+        <img id="m-photo-img" src="images/hero-3d-station.jpg" alt="EV Station" class="modal-photo-banner">
+        <div class="modal-photo-overlay">
+          <div class="modal-badge-group">
+            <span class="badge badge-cyan" id="m-operator">Tata Power</span>
+            <span class="badge badge-emerald" id="m-status">Available</span>
+            <span class="badge badge-purple" id="m-speed">Superfast</span>
+          </div>
+          <span class="modal-photo-tag"><i data-lucide="camera"></i> Station Hub Preview</span>
+        </div>
+      </div>
+
+      <div class="modal-header">
+        <h2 id="m-name" class="modal-title">Station Name</h2>
+        <p id="m-address" class="modal-address">
+          <i data-lucide="map-pin"></i> <span>Station Address</span>
+        </p>
+      </div>
+
+      <div class="modal-body">
+        <!-- Metric Highlights -->
+        <div class="modal-spec-grid">
+          <div class="modal-spec-card">
+            <span class="spec-label">Charging Power</span>
+            <span class="spec-val text-cyan" id="m-power">60 kW</span>
+          </div>
+          <div class="modal-spec-card">
+            <span class="spec-label">Pricing Estimate</span>
+            <span class="spec-val text-emerald" id="m-pricing">₹18 - ₹22 / kWh</span>
+          </div>
+          <div class="modal-spec-card">
+            <span class="spec-label">Operating Hours</span>
+            <span class="spec-val" id="m-hours">24/7 Always Open</span>
+          </div>
+          <div class="modal-spec-card">
+            <span class="spec-label">Voltage Range</span>
+            <span class="spec-val text-purple" id="m-voltage">400V - 800V DC</span>
+          </div>
+        </div>
+
+        <!-- Connector Types -->
+        <div class="modal-section">
+          <h4 class="modal-section-title"><i data-lucide="plug"></i> Supported Connectors</h4>
+          <div class="connector-badge-list" id="m-connectors"></div>
+        </div>
+
+        <!-- Live Slot Topology Breakdown -->
+        <div class="modal-section">
+          <div class="modal-slots-title-row">
+            <h4 class="modal-section-title"><i data-lucide="layers"></i> Charging Slot Availability</h4>
+            <span class="slot-summary-text" id="m-slots-summary">3 of 4 Slots Free</span>
+          </div>
+          <div class="slots-visual-grid" id="m-slots-grid"></div>
+        </div>
+
+        <!-- Amenities -->
+        <div class="modal-section">
+          <h4 class="modal-section-title"><i data-lucide="sparkles"></i> Station Amenities</h4>
+          <div class="amenities-tag-list" id="m-amenities"></div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <a href="#" target="_blank" class="btn btn-outline" id="m-directions-btn">
+          <i data-lucide="navigation"></i>
+          <span>Get Directions</span>
+        </a>
+        <button class="btn btn-primary" id="m-book-slot-btn">
+          <i data-lucide="zap"></i>
+          <span>Reserve Available Slot</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- Footer -->
+  <footer class="footer glass-panel">
+    <div class="footer-content">
+      <div class="footer-left">
+        <div class="logo-text">⚡ <strong>VoltNav</strong> &bull; EV Charging Station Tracker</div>
+        <p>Built with verified Kaggle dataset telemetry &bull; Full-stack Python & Interactive Frontend</p>
+      </div>
+      <div class="footer-right">
+        <div class="status-indicator">
+          <span class="pulsing-dot"></span>
+          <span>1,194 Stations Live &bull; Real-Time Simulation Active</span>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <!-- Scripts -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="js/3d-effects.js"></script>
+  <script src="js/data-adapter.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

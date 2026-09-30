@@ -1,0 +1,16 @@
+[build]
+  publish = "frontend"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Optional: If you deploy your Python backend on Render, Railway, or Fly.io,
+# uncomment and update the redirect below to route API calls to your cloud backend:
+# [[redirects]]
+#   from = "/api/*"
+#   to = "https://voltnav-backend.onrender.com/api/:splat"
+#   status = 200
