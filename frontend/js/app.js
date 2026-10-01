@@ -786,32 +786,48 @@ async function reserveSlot(stationId, slotId = null) {
 }
 
 // 14. Availability Section: Interactive Station Monitor
-function populateMonitorSelect(cities) {
+async function populateMonitorSelect(cities) {
   const select = document.getElementById('monitor-station-select');
   if (!select) return;
 
-  // Fetch top 30 stations for the monitor
-  fetch('/api/stations?limit=30')
-    .then(r => r.json())
-    .then(data => {
-      select.innerHTML = '<option value="">Select an EV station to monitor...</option>';
-      (data.stations || []).forEach(stn => {
-        select.innerHTML += `<option value="${stn.id}">${stn.name} (${stn.city}) - ${stn.available_slots} Slots Free</option>`;
-      });
+  try {
+    let data;
+    if (window.VoltNavData) {
+      data = await VoltNavData.getStations({}, 1, 30);
+    } else {
+      const r = await fetch('/api/stations?limit=30');
+      data = await r.json();
+    }
 
-      // Default to first station
-      if (data.stations && data.stations.length > 0) {
-        select.value = data.stations[0].id;
-        renderSlotMonitorContent(data.stations[0]);
-      }
+    select.innerHTML = '<option value="">Select an EV station to monitor...</option>';
+    (data.stations || []).forEach(stn => {
+      select.innerHTML += `<option value="${stn.id}">${stn.name} (${stn.city}) - ${stn.available_slots} Slots Free</option>`;
     });
 
-  select.addEventListener('change', (e) => {
+    // Default to first station
+    if (data.stations && data.stations.length > 0) {
+      select.value = data.stations[0].id;
+      renderSlotMonitorContent(data.stations[0]);
+    }
+  } catch (err) {
+    console.error("Error populating monitor stations:", err);
+  }
+
+  select.addEventListener('change', async (e) => {
     const id = e.target.value;
     if (!id) return;
-    fetch(`/api/stations/${id}`)
-      .then(r => r.json())
-      .then(stn => renderSlotMonitorContent(stn));
+    try {
+      let stn;
+      if (window.VoltNavData) {
+        stn = await VoltNavData.getStationById(id);
+      } else {
+        const r = await fetch(`/api/stations/${id}`);
+        stn = await r.json();
+      }
+      if (stn) renderSlotMonitorContent(stn);
+    } catch (err) {
+      console.error("Error loading monitor station details:", err);
+    }
   });
 }
 
@@ -873,13 +889,16 @@ function renderSlotMonitorContent(stn) {
 }
 
 // 15. Periodic Dynamic Slot Refresher
-function refreshDynamicSlots() {
-  // Update stats bar subtly
-  fetch('/api/stats')
-    .then(r => r.json())
-    .then(data => {
-      const availEl = document.getElementById('stat-available-slots');
-      if (availEl) availEl.textContent = data.available_slots.toLocaleString();
-    })
-    .catch(() => {});
+async function refreshDynamicSlots() {
+  try {
+    let data;
+    if (window.VoltNavData) {
+      data = await VoltNavData.getStats();
+    } else {
+      const r = await fetch('/api/stats');
+      data = await r.json();
+    }
+    const availEl = document.getElementById('stat-available-slots');
+    if (availEl && data.available_slots) availEl.textContent = data.available_slots.toLocaleString();
+  } catch (e) {}
 }
